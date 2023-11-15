@@ -1,0 +1,26 @@
+From 701750a896a08d5841a7bc0d187bcddaa6c0f616 Mon Sep 17 00:00:00 2001
+From: Tulio Magno Quites Machado Filho <tuliom@redhat.com>
+Date: Thu, 16 Mar 2023 17:22:24 -0300
+Subject: [PATCH] [PowerPC][clang] Fix triple
+
+Some Linux distributions use ppc64le instead of powerpc.
+---
+ clang/test/CodeGenCoroutines/pr56329.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/clang/test/CodeGenCoroutines/pr56329.cpp b/clang/test/CodeGenCoroutines/pr56329.cpp
+index 31d4849af4e7..69e0f1d337cf 100644
+--- a/clang/test/CodeGenCoroutines/pr56329.cpp
++++ b/clang/test/CodeGenCoroutines/pr56329.cpp
+@@ -2,7 +2,7 @@
+ //
+ // RUN: %clang_cc1 -triple %itanium_abi_triple -std=c++20 %s -O3 -S -emit-llvm -o - | FileCheck %s
+ // This test is expected to fail on PowerPC.
+-// XFAIL: target=powerpc{{.*}}
++// XFAIL: target={{(ppc|powerpc).*}}
+ 
+ #include "Inputs/coroutine.h"
+ 
+-- 
+2.39.2
+-
