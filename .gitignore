@@ -1,4 +1,6 @@
-SOURCES/clang-tools-extra-15.0.7.src.tar.xz
-SOURCES/clang-tools-extra-15.0.7.src.tar.xz.sig
-SOURCES/clang-15.0.7.src.tar.xz
-SOURCES/clang-15.0.7.src.tar.xz.sig
+SOURCES/clang-tools-extra-16.0.6.src.tar.xz
+SOURCES/clang-tools-extra-16.0.6.src.tar.xz.sig
+SOURCES/cmake-16.0.6.src.tar.xz
+SOURCES/cmake-16.0.6.src.tar.xz.sig
+SOURCES/clang-16.0.6.src.tar.xz
+SOURCES/clang-16.0.6.src.tar.xz.sig

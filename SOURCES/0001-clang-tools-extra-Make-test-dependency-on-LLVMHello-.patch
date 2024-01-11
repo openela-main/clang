@@ -58,13 +58,16 @@ diff --git a/clang-tools-extra/test/lit.cfg.py b/clang-tools-extra/test/lit.cfg.
 index 9b99bfd93440..3fca9f25fb48 100644
 --- a/clang-tools-extra/test/lit.cfg.py
 +++ b/clang-tools-extra/test/lit.cfg.py
-@@ -59,3 +59,6 @@ config.substitutions.append(
+@@ -59,6 +59,9 @@ config.substitutions.append(
  # Plugins (loadable modules)
  if config.has_plugins and config.llvm_plugin_ext:
      config.available_features.add('plugins')
 +
 +if config.has_llvm_hello:
 +    config.available_features.add("llvm-hello")
+ 
+ # It is not realistically possible to account for all options that could
+ # possibly be present in system and user configuration files, so disable
 diff --git a/clang-tools-extra/test/lit.site.cfg.py.in b/clang-tools-extra/test/lit.site.cfg.py.in
 index 4eb830a1baf1..6e5559348454 100644
 --- a/clang-tools-extra/test/lit.site.cfg.py.in
