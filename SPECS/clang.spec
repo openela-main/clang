@@ -2,13 +2,15 @@
 # See https://docs.fedoraproject.org/en-US/packaging-guidelines/#_compiler_macros
 %global toolchain clang
 
+%global gts_version 13
+
 %bcond_with compat_build
 %bcond_with bundle_compat_lib
 %bcond_without check
 
-%global maj_ver 15
+%global maj_ver 16
 %global min_ver 0
-%global patch_ver 7
+%global patch_ver 6
 %global clang_version %{maj_ver}.%{min_ver}.%{patch_ver}
 
 %if %{with compat_build}
@@ -30,8 +32,8 @@
 %endif
 
 %if %{with bundle_compat_lib}
-%global compat_maj_ver 14
-%global compat_ver %{compat_maj_ver}.0.6
+%global compat_maj_ver 15
+%global compat_ver %{compat_maj_ver}.0.7
 %endif
 
 
@@ -45,10 +47,10 @@
 
 Name:		%pkg_name
 Version:	%{clang_version}%{?rc_ver:~rc%{rc_ver}}
-Release:	2%{?dist}
+Release:	1%{?dist}
 Summary:	A C language family front-end for LLVM
 
-License:	NCSA
+License:	Apache-2.0 WITH LLVM-exception OR NCSA
 URL:		http://llvm.org
 Source0:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{clang_version}%{?rc_ver:-rc%{rc_ver}}/%{clang_srcdir}.tar.xz
 Source1:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{clang_version}%{?rc_ver:-rc%{rc_ver}}/%{clang_srcdir}.tar.xz.sig
@@ -62,26 +64,33 @@ Source5:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{compat
 Source6:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{compat_ver}/clang-%{compat_ver}.src.tar.xz.sig
 Source7:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{compat_ver}/llvm-%{compat_ver}.src.tar.xz
 Source8:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{compat_ver}/llvm-%{compat_ver}.src.tar.xz.sig
-Source9:	tstellar-gpg-key.asc
+Source9:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{compat_ver}/cmake-%{compat_ver}.src.tar.xz
+Source10:	https://github.com/llvm/llvm-project/releases/download/llvmorg-%{compat_ver}/cmake-%{compat_ver}.src.tar.xz.sig
 %endif
 %if !0%{with compat_build}
-Source10:	macros.%{name}
+Source11:	macros.%{name}
 %endif
 
 # Patches for clang
 
-Patch2:     0002-Driver-Add-a-gcc-equivalent-triple-to-the-list-of-tr.patch
-# TODO: Can be dropped in LLVM 16: https://reviews.llvm.org/D133316
-Patch3:     0003-Mark-fopenmp-implicit-rpath-as-NoArgumentUnused.patch
-Patch4:     0004-Reorganize-gtest-integration.patch
-# This patch can be dropped once gcc-12.0.1-0.5.fc36 is in the repo.
-Patch5:     0005-Work-around-gcc-miscompile.patch
-Patch6:     0006-Don-t-install-static-libraries.patch
-Patch7:     0007-Make-funwind-tables-the-default-on-all-archs.patch
-Patch8:     0008-Produce-DWARF4-by-default.patch
-Patch9:     0009-disable-recommonmark.patch
-# TODO: Can be dropped in LLVM 16: https://reviews.llvm.org/D134362
-Patch10:    0010-clang-Fix-interaction-between-asm-labels-and-inline-.patch
+Patch1:     0003-PATCH-Make-funwind-tables-the-default-on-all-archs.patch
+Patch2:     0006-Don-t-install-static-libraries.patch
+Patch3:     0002-Driver-Add-a-gcc-equivalent-triple-to-the-list-of-tr.patch
+Patch4:	    0010-PATCH-clang-Produce-DWARF4-by-default.patch
+# Make clangBasic and clangDriver depend on LLVMTargetParser
+# See https://reviews.llvm.org/D141581
+Patch7:     D141581.diff
+# clang/cmake: Use installed gtest libraries for stand-alone builds
+# See https://reviews.llvm.org/D138472
+Patch8:     D138472.diff
+
+Patch10:    fix-ieee128-cross.diff
+
+Patch11:    0001-Change-LLVM_COMMON_CMAKE_UTILS-usage.patch
+
+# RHEL specific patch
+Patch12:     0009-disable-recommonmark.patch
+Patch13:     0001-Driver-Give-devtoolset-path-precedence-over-Installe.patch
 
 %if %{without compat_build}
 # Patches for clang-tools-extra
@@ -89,14 +98,10 @@ Patch10:    0010-clang-Fix-interaction-between-asm-labels-and-inline-.patch
 Patch201:   0001-clang-tools-extra-Make-test-dependency-on-LLVMHello-.patch
 %endif
 
-# RHEL only: We build LLVM with clang, which now defaults to using the
-#   libstdc++ from gcc-toolset-12. Since we're linking some clang
-#   tools statically to some static libraries from LLVM, we
-#   need to use libstdc++12 as well. So, use gcc-toolset-12
-#   to compile clang.
-BuildRequires: gcc-toolset-12-gcc-c++
-BuildRequires: gcc-toolset-12-annobin-plugin-gcc
-BuildRequires: gcc-toolset-12-libatomic-devel
+# Required for 64-bit atomics on i686.
+BuildRequires: gcc-toolset-%{gts_version}-libatomic-devel
+# Required to handle LTO debuginfo.
+BuildRequires: gcc-toolset-%{gts_version}-gdb
 BuildRequires:	clang
 BuildRequires:	cmake
 BuildRequires:	ninja-build
@@ -186,7 +191,7 @@ libomp-devel to enable -fopenmp.
 %package libs
 Summary: Runtime library for clang
 Requires: %{name}-resource-filesystem%{?_isa} = %{version}
-Requires: gcc-toolset-12-gcc-c++
+Requires: gcc-toolset-%{gts_version}-gcc-c++
 Recommends: compiler-rt%{?_isa} = %{version}
 # atomic support is not part of compiler-rt
 Recommends: libatomic%{?_isa}
@@ -225,7 +230,7 @@ This package owns the clang resouce directory: $libdir/clang/$version/
 %if %{without compat_build}
 %package analyzer
 Summary:	A source code analysis framework
-License:	NCSA and MIT
+License:	Apache-2.0 WITH LLVM-exception OR NCSA OR MIT
 BuildArch:	noarch
 Requires:	%{name} = %{version}-%{release}
 
@@ -242,13 +247,6 @@ Requires:	emacs-filesystem
 
 %description tools-extra
 A set of extra tools built using Clang's tooling API.
-
-%package tools-extra-devel
-Summary: Development header files for clang tools
-Requires: %{name}-tools-extra = %{version}-%{release}
-
-%description tools-extra-devel
-Development header files for clang tools.
 
 # Put git-clang-format in its own package, because it Requires git
 # and we don't want to force users to install all those dependenices if they
@@ -278,11 +276,13 @@ Requires:      python3
 %{gpgverify} --keyring='%{SOURCE4}' --signature='%{SOURCE1}' --data='%{SOURCE0}'
 
 %if %{with bundle_compat_lib}
-%{gpgverify} --keyring='%{SOURCE9}' --signature='%{SOURCE6}' --data='%{SOURCE5}'
-%{gpgverify} --keyring='%{SOURCE9}' --signature='%{SOURCE8}' --data='%{SOURCE7}'
+%{gpgverify} --keyring='%{SOURCE4}' --signature='%{SOURCE6}' --data='%{SOURCE5}'
+%{gpgverify} --keyring='%{SOURCE4}' --signature='%{SOURCE8}' --data='%{SOURCE7}'
+%{gpgverify} --keyring='%{SOURCE4}' --signature='%{SOURCE10}' --data='%{SOURCE9}'
 
 %setup -T -q -b 5 -n clang-%{compat_ver}.src
 %setup -T -q -b 7 -n llvm-%{compat_ver}.src
+%setup -T -q -b 9 -n cmake-%{compat_ver}.src
 %endif
 
 %if %{with compat_build}
@@ -320,12 +320,15 @@ rm test/CodeGen/profile-filter.c
 
 %build
 
-%define _lto_cflags %{nil}
-
 %if 0%{?__isa_bits} == 64
 sed -i 's/\@FEDORA_LLVM_LIB_SUFFIX\@/64/g' test/lit.cfg.py
 %else
 sed -i 's/\@FEDORA_LLVM_LIB_SUFFIX\@//g' test/lit.cfg.py
+%endif
+
+%ifarch %ix86
+# Linking libclang.so goes out of memory even with ThinLTO and a single link job.
+%global _lto_cflags %nil
 %endif
 
 %ifarch s390 s390x %{arm} aarch64 %ix86 ppc64le
@@ -342,12 +345,13 @@ sed -i 's/\@FEDORA_LLVM_LIB_SUFFIX\@//g' test/lit.cfg.py
 %if %{with bundle_compat_lib}
 
 mv ../clang-%{compat_ver}.src ../clang
+mv ../cmake-%{compat_ver}.src ../cmake
 
 %global targets_to_build "X86;AMDGPU;PowerPC;NVPTX;SystemZ;AArch64;ARM;Mips;BPF;WebAssembly"
 
-# Use llvm cmake files from the main package.
-#sed -i 's~${LLVM_CMAKE_PATH}~%{_libdir}/cmake/llvm/~' ../clang-%{compat_ver}.src/lib/Basic/CMakeLists.txt
-
+# Disable LTO when building the compat libraries. This would perform LTO across all of LLVM and
+# Clang, and fails due to "too many open files". We don't particularly care about the performance
+# of these compat libraries.
 %cmake -S ../llvm-%{compat_ver}.src -B ../clang-compat-libs -G Ninja \
 	-DLLVM_ENABLE_PROJECTS=clang \
 	-DCMAKE_BUILD_TYPE=Release \
@@ -356,7 +360,9 @@ mv ../clang-%{compat_ver}.src ../clang
 	-DLLVM_ENABLE_RTTI:BOOL=ON \
 	-DCMAKE_SKIP_RPATH:BOOL=ON \
 	-DLLVM_TARGETS_TO_BUILD=%{targets_to_build} \
-	-DLLVM_INCLUDE_BENCHMARKS=OFF
+	-DLLVM_INCLUDE_BENCHMARKS=OFF \
+	-DCMAKE_C_FLAGS_RELEASE="-fno-lto" \
+	-DCMAKE_CXX_FLAGS_RELEASE="-fno-lto"
 
 %ninja_build -C ../clang-compat-libs libclang.so
 %ninja_build -C ../clang-compat-libs libclang-cpp.so
@@ -404,6 +410,7 @@ mv ../clang-%{compat_ver}.src ../clang
 %else
 	-DLLVM_TABLEGEN_EXE:FILEPATH=%{_bindir}/llvm-tblgen \
 %endif
+	-DLLVM_COMMON_CMAKE_UTILS=%{_libdir}/cmake/llvm \
 	-DCLANG_ENABLE_ARCMT:BOOL=ON \
 	-DCLANG_ENABLE_STATIC_ANALYZER:BOOL=ON \
 	-DCLANG_INCLUDE_DOCS:BOOL=ON \
@@ -423,12 +430,16 @@ mv ../clang-%{compat_ver}.src ../clang
 	-DCLANG_DEFAULT_LINKER=lld \
 %endif
 	-DCLANG_DEFAULT_UNWINDLIB=libgcc \
-	-DGCC_INSTALL_PREFIX=/opt/rh/gcc-toolset-12/root/usr \
+	-DGCC_INSTALL_PREFIX=/opt/rh/gcc-toolset-%{gts_version}/root/usr \
 	-DLLVM_INCLUDE_BENCHMARKS=OFF
 
 %cmake_build
 
 %install
+
+# Use newer GDB for gdb-add-index step, as system GDB can't handle the LTO debuginfo.
+source scl_source enable gcc-toolset-%{gts_version}
+export GDB=`which gdb`
 
 %cmake_install
 
@@ -444,14 +455,14 @@ rm -Rf %{buildroot}%{install_bindir}
 rm -Rf %{buildroot}%{install_prefix}/share
 rm -Rf %{buildroot}%{install_prefix}/libexec
 # Remove scanview-py helper libs
-rm -Rf %{buildroot}%{install_prefix}/lib/{libear,libscanbuild}
+rm -Rf %{buildroot}%{install_prefix}/%{_lib}/{libear,libscanbuild}
 
 %else
 
 # File in the macros file for other packages to use.  We are not doing this
 # in the compat package, because the version macros would # conflict with
 # eachother if both clang and the clang compat package were installed together.
-install -p -m0644 -D %{SOURCE10} %{buildroot}%{_rpmmacrodir}/macros.%{name}
+install -p -m0644 -D %{SOURCE11} %{buildroot}%{_rpmmacrodir}/macros.%{name}
 sed -i -e "s|@@CLANG_MAJOR_VERSION@@|%{maj_ver}|" \
        -e "s|@@CLANG_MINOR_VERSION@@|%{min_ver}|" \
        -e "s|@@CLANG_PATCH_VERSION@@|%{patch_ver}|" \
@@ -463,7 +474,7 @@ install -p -m644 bindings/python/clang/* %{buildroot}%{python3_sitelib}/clang/
 %py_byte_compile %{__python3} %{buildroot}%{python3_sitelib}/clang
 
 # install scanbuild-py to python sitelib.
-mv %{buildroot}%{_prefix}/lib/{libear,libscanbuild} %{buildroot}%{python3_sitelib}
+mv %{buildroot}%{_prefix}/%{_lib}/{libear,libscanbuild} %{buildroot}%{python3_sitelib}
 %py_byte_compile %{__python3} %{buildroot}%{python3_sitelib}/{libear,libscanbuild}
 
 # Fix permissions of scan-view scripts
@@ -502,21 +513,15 @@ ln -s clang++ %{buildroot}%{_bindir}/clang++-%{maj_ver}
 # Fix permission
 chmod u-x %{buildroot}%{_mandir}/man1/scan-build.1*
 
-# create a link to clang's resource directory that is "constant" across minor
-# version bumps
-# this is required for packages like ccls that hardcode the link to clang's
-# resource directory to not require rebuilds on minor version bumps
-# Fix for bugs like rhbz#1807574
-pushd %{buildroot}%{_libdir}/clang/
-ln -s %{version} %{maj_ver}
-popd
-
 %endif
 
 # Create sub-directories in the clang resource directory that will be
 # populated by other packages
-mkdir -p %{buildroot}%{pkg_libdir}/clang/%{version}/{include,lib,share}/
+mkdir -p %{buildroot}%{pkg_libdir}/clang/%{maj_ver}/{include,lib,share}/
 
+
+# Remove clang-tidy headers.  We don't ship the libraries for these.
+rm -Rvf %{buildroot}%{_includedir}/clang-tidy/
 
 %if %{without compat_build}
 # Add a symlink in /usr/bin to clang-format-diff
@@ -575,11 +580,11 @@ mv ./libclang-cpp.so.%{compat_maj_ver} "$compat_lib"
 
 %files libs
 %if %{without compat_build}
-%{_libdir}/clang/%{version}/include/*
+%{_libdir}/clang/%{maj_ver}/include/*
 %{_libdir}/*.so.*
 %else
 %{pkg_libdir}/*.so.*
-%{pkg_libdir}/clang/%{version}/include/*
+%{pkg_libdir}/clang/%{maj_ver}/include/*
 %endif
 %if %{with bundle_compat_lib}
 %{_libdir}/libclang.so.%{compat_maj_ver}*
@@ -604,13 +609,10 @@ mv ./libclang-cpp.so.%{compat_maj_ver} "$compat_lib"
 
 %files resource-filesystem
 %dir %{pkg_libdir}/clang/
-%dir %{pkg_libdir}/clang/%{version}/
-%dir %{pkg_libdir}/clang/%{version}/include/
-%dir %{pkg_libdir}/clang/%{version}/lib/
-%dir %{pkg_libdir}/clang/%{version}/share/
-%if %{without compat_build}
-%{pkg_libdir}/clang/%{maj_ver}
-%endif
+%dir %{pkg_libdir}/clang/%{maj_ver}/
+%dir %{pkg_libdir}/clang/%{maj_ver}/include/
+%dir %{pkg_libdir}/clang/%{maj_ver}/lib/
+%dir %{pkg_libdir}/clang/%{maj_ver}/share/
 
 %if %{without compat_build}
 %files analyzer
@@ -633,19 +635,19 @@ mv ./libclang-cpp.so.%{compat_maj_ver} "$compat_lib"
 
 
 %files tools-extra
+%{_bindir}/amdgpu-arch
 %{_bindir}/clang-apply-replacements
 %{_bindir}/clang-change-namespace
 %{_bindir}/clang-check
 %{_bindir}/clang-doc
 %{_bindir}/clang-extdef-mapping
 %{_bindir}/clang-format
+%{_bindir}/clang-include-cleaner
 %{_bindir}/clang-include-fixer
 %{_bindir}/clang-move
 %{_bindir}/clang-offload-bundler
 %{_bindir}/clang-offload-packager
-%{_bindir}/clang-offload-wrapper
 %{_bindir}/clang-linker-wrapper
-%{_bindir}/clang-nvlink-wrapper
 %{_bindir}/clang-pseudo
 %{_bindir}/clang-query
 %{_bindir}/clang-refactor
@@ -657,6 +659,7 @@ mv ./libclang-cpp.so.%{compat_maj_ver} "$compat_lib"
 %{_bindir}/clangd
 %{_bindir}/diagtool
 %{_bindir}/hmaptool
+%{_bindir}/nvptx-arch
 %{_bindir}/pp-trace
 %{_bindir}/c-index-test
 %{_bindir}/find-all-symbols
@@ -674,9 +677,6 @@ mv ./libclang-cpp.so.%{compat_maj_ver} "$compat_lib"
 %{_datadir}/clang/run-find-all-symbols.py*
 %{_datadir}/clang/clang-rename.py*
 
-%files tools-extra-devel
-%{_includedir}/clang-tidy/
-
 %files -n git-clang-format
 %{_bindir}/git-clang-format
 
@@ -686,6 +686,33 @@ mv ./libclang-cpp.so.%{compat_maj_ver} "$compat_lib"
 
 %endif
 %changelog
+* Wed Jul 05 2023 Nikita Popov <npopov@redhat.com> - 16.0.6-1
+- Update to LLVM 16.0.6
+
+* Fri Jun 30 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-7
+- Restore gcc-toolset-libatomic-devel requirement
+
+* Fri Jun 30 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-6
+- Switch to gcc-toolset-13-gcc
+
+* Thu Jun 29 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-5
+- Use gcc-toolset-13-gdb for gdb-add-index
+
+* Fri Jun 02 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-4
+- Build with LTO
+
+* Thu May 25 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-3
+- Use ld from gcc-toolset
+
+* Tue Apr 18 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-2
+- Restore use of gcc-toolset-12
+
+* Mon Apr 17 2023 Nikita Popov <npopov@redhat.com> - 16.0.1-1
+- Update to LLVM 16.0.1
+
+* Fri Jan 27 2023 Konrad Kleine <kkleine@redhat.com> - 15.0.7-3
+- Remove clang-tools-extra-devel package
+
 * Mon Jan 16 2023 Konrad Kleine <kkleine@redhat.com> - 15.0.7-2
 - Update to 15.0.7
 

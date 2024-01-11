@@ -1,7 +1,7 @@
-From 62728c7321a2d07f7d22dadc2b8565ad512b3da4 Mon Sep 17 00:00:00 2001
+From 4ea62faaaac1aad0fe496cabe9674c809c91c49a Mon Sep 17 00:00:00 2001
 From: Konrad Kleine <kkleine@redhat.com>
-Date: Thu, 24 Mar 2022 09:44:21 +0100
-Subject: Produce DWARF4 by default
+Date: Mon, 13 Feb 2023 17:11:00 -0300
+Subject: [PATCH] Produce DWARF4 by default
 
 Have a look at the following commit to see when the move from DWARF 4 to 5 first happened upstream:
 
@@ -9,18 +9,19 @@ https://github.com/llvm/llvm-project/commit/d3b26dea16108c427b19b5480c9edc76edf8
 ---
  clang/include/clang/Driver/ToolChain.h | 2 +-
  clang/test/CodeGen/dwarf-version.c     | 4 ++--
+ clang/test/Driver/as-options.s         | 4 ++--
  clang/test/Driver/cl-options.c         | 2 +-
  clang/test/Driver/clang-g-opts.c       | 2 +-
  clang/test/Driver/ve-toolchain.c       | 2 +-
  clang/test/Driver/ve-toolchain.cpp     | 2 +-
- 6 files changed, 7 insertions(+), 7 deletions(-)
+ 7 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/clang/include/clang/Driver/ToolChain.h b/clang/include/clang/Driver/ToolChain.h
-index f20ab164531b..53c86ee82936 100644
+index f75f35dc9e65..a70ae2b17833 100644
 --- a/clang/include/clang/Driver/ToolChain.h
 +++ b/clang/include/clang/Driver/ToolChain.h
-@@ -535,7 +535,7 @@ public:
-   
+@@ -547,7 +547,7 @@ public:
+ 
    // Return the DWARF version to emit, in the absence of arguments
    // to the contrary.
 -  virtual unsigned GetDefaultDwarfVersion() const { return 5; }
@@ -43,19 +44,41 @@ index 0a6fa4768026..96f01749d0d8 100644
  
  // The -isysroot is used as a hack to avoid LIT messing with the SDKROOT
  // environment variable which indirecty overrides the version in the target
+diff --git a/clang/test/Driver/as-options.s b/clang/test/Driver/as-options.s
+index 73d002c7ef7e..71d55f7fd537 100644
+--- a/clang/test/Driver/as-options.s
++++ b/clang/test/Driver/as-options.s
+@@ -122,7 +122,7 @@
+ // RUN:   FileCheck --check-prefix=DEBUG %s
+ // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -g0 -g %s -### 2>&1 | \
+ // RUN:   FileCheck --check-prefix=DEBUG %s
+-// DEBUG: "-g" "-gdwarf-5"
++// DEBUG: "-g" "-gdwarf-4"
+ // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -g -g0 %s -### 2>&1 | \
+ // RUN:   FileCheck --check-prefix=NODEBUG %s
+ // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -gdwarf-5 -g0 %s -### 2>&1 | \
+@@ -141,7 +141,7 @@
+ // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -gdwarf-2 %s -### 2>&1 | \
+ // RUN:   FileCheck --check-prefix=GDWARF2 %s
+ // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -gdwarf %s -### 2>&1 | \
+-// RUN:   FileCheck --check-prefix=GDWARF5 %s
++// RUN:   FileCheck --check-prefix=GDWARF4 %s
+ 
+ // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -gdwarf-5 %s -### 2>&1 | \
+ // RUN:   FileCheck --check-prefix=GDWARF5 %s
 diff --git a/clang/test/Driver/cl-options.c b/clang/test/Driver/cl-options.c
-index a2e350a0a835..01889ba0bf9b 100644
+index 1d588bdfc1b0..1ad57aedc3a4 100644
 --- a/clang/test/Driver/cl-options.c
 +++ b/clang/test/Driver/cl-options.c
-@@ -570,7 +570,7 @@
+@@ -575,7 +575,7 @@
  // RUN: %clang_cl /Z7 -gdwarf /c -### -- %s 2>&1 | FileCheck -check-prefix=Z7_gdwarf %s
  // Z7_gdwarf: "-gcodeview"
  // Z7_gdwarf: "-debug-info-kind=constructor"
 -// Z7_gdwarf: "-dwarf-version=
 +// Z7_gdwarf: "-dwarf-version=4
  
- // RUN: %clang_cl -fmsc-version=1800 -TP -### -- %s 2>&1 | FileCheck -check-prefix=CXX11 %s
- // CXX11: -std=c++11
+ // RUN: %clang_cl /ZH:MD5 /c -### -- %s 2>&1 | FileCheck -check-prefix=ZH_MD5 %s
+ // ZH_MD5: "-gsrc-hash=md5"
 diff --git a/clang/test/Driver/clang-g-opts.c b/clang/test/Driver/clang-g-opts.c
 index d982b1070cae..bb129e75769c 100644
 --- a/clang/test/Driver/clang-g-opts.c
@@ -96,5 +119,5 @@ index 5a33d5eceb61..cedf895b36dc 100644
  ///-----------------------------------------------------------------------------
  /// Checking include-path
 -- 
-2.37.1
+2.39.1
 
