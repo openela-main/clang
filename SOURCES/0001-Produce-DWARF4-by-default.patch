@@ -1,36 +1,38 @@
-From 4ea62faaaac1aad0fe496cabe9674c809c91c49a Mon Sep 17 00:00:00 2001
+From adbe188f3b1e3a0dd5ec80d9409601ba7f5b0423 Mon Sep 17 00:00:00 2001
 From: Konrad Kleine <kkleine@redhat.com>
-Date: Mon, 13 Feb 2023 17:11:00 -0300
+Date: Thu, 24 Mar 2022 09:44:21 +0100
 Subject: [PATCH] Produce DWARF4 by default
 
 Have a look at the following commit to see when the move from DWARF 4 to 5 first happened upstream:
 
 https://github.com/llvm/llvm-project/commit/d3b26dea16108c427b19b5480c9edc76edf8f5b4?diff=unified
 ---
- clang/include/clang/Driver/ToolChain.h | 2 +-
- clang/test/CodeGen/dwarf-version.c     | 4 ++--
- clang/test/Driver/as-options.s         | 4 ++--
- clang/test/Driver/cl-options.c         | 2 +-
- clang/test/Driver/clang-g-opts.c       | 2 +-
- clang/test/Driver/ve-toolchain.c       | 2 +-
- clang/test/Driver/ve-toolchain.cpp     | 2 +-
- 7 files changed, 9 insertions(+), 9 deletions(-)
+ clang/lib/Driver/ToolChain.cpp     | 4 +---
+ clang/test/CodeGen/dwarf-version.c | 4 ++--
+ clang/test/Driver/as-options.s     | 4 ++--
+ clang/test/Driver/cl-options.c     | 2 +-
+ clang/test/Driver/clang-g-opts.c   | 2 +-
+ clang/test/Driver/ve-toolchain.c   | 2 +-
+ clang/test/Driver/ve-toolchain.cpp | 2 +-
+ 7 files changed, 9 insertions(+), 11 deletions(-)
 
-diff --git a/clang/include/clang/Driver/ToolChain.h b/clang/include/clang/Driver/ToolChain.h
-index f75f35dc9e65..a70ae2b17833 100644
---- a/clang/include/clang/Driver/ToolChain.h
-+++ b/clang/include/clang/Driver/ToolChain.h
-@@ -547,7 +547,7 @@ public:
+diff --git a/clang/lib/Driver/ToolChain.cpp b/clang/lib/Driver/ToolChain.cpp
+index 8dafc3d481c2..92bf26dc8ec6 100644
+--- a/clang/lib/Driver/ToolChain.cpp
++++ b/clang/lib/Driver/ToolChain.cpp
+@@ -428,9 +428,7 @@ ToolChain::getDefaultUnwindTableLevel(const ArgList &Args) const {
+ }
  
-   // Return the DWARF version to emit, in the absence of arguments
-   // to the contrary.
--  virtual unsigned GetDefaultDwarfVersion() const { return 5; }
-+  virtual unsigned GetDefaultDwarfVersion() const { return 4; }
+ unsigned ToolChain::GetDefaultDwarfVersion() const {
+-  // TODO: Remove the RISC-V special case when R_RISCV_SET_ULEB128 linker
+-  // support becomes more widely available.
+-  return getTriple().isRISCV() ? 4 : 5;
++  return 4;
+ }
  
-   // Some toolchains may have different restrictions on the DWARF version and
-   // may need to adjust it. E.g. NVPTX may need to enforce DWARF2 even when host
+ Tool *ToolChain::getClang() const {
 diff --git a/clang/test/CodeGen/dwarf-version.c b/clang/test/CodeGen/dwarf-version.c
-index 0a6fa4768026..96f01749d0d8 100644
+index d307eb3f101f..e7e93bf6688c 100644
 --- a/clang/test/CodeGen/dwarf-version.c
 +++ b/clang/test/CodeGen/dwarf-version.c
 @@ -2,8 +2,8 @@
@@ -67,10 +69,10 @@ index 73d002c7ef7e..71d55f7fd537 100644
  // RUN: %clang --target=aarch64-linux-gnu -fno-integrated-as -gdwarf-5 %s -### 2>&1 | \
  // RUN:   FileCheck --check-prefix=GDWARF5 %s
 diff --git a/clang/test/Driver/cl-options.c b/clang/test/Driver/cl-options.c
-index 1d588bdfc1b0..1ad57aedc3a4 100644
+index 6d929b19e7e2..373905c2e0fc 100644
 --- a/clang/test/Driver/cl-options.c
 +++ b/clang/test/Driver/cl-options.c
-@@ -575,7 +575,7 @@
+@@ -569,7 +569,7 @@
  // RUN: %clang_cl /Z7 -gdwarf /c -### -- %s 2>&1 | FileCheck -check-prefix=Z7_gdwarf %s
  // Z7_gdwarf: "-gcodeview"
  // Z7_gdwarf: "-debug-info-kind=constructor"
@@ -80,7 +82,7 @@ index 1d588bdfc1b0..1ad57aedc3a4 100644
  // RUN: %clang_cl /ZH:MD5 /c -### -- %s 2>&1 | FileCheck -check-prefix=ZH_MD5 %s
  // ZH_MD5: "-gsrc-hash=md5"
 diff --git a/clang/test/Driver/clang-g-opts.c b/clang/test/Driver/clang-g-opts.c
-index d982b1070cae..bb129e75769c 100644
+index 5ee0fe64fe48..985158746137 100644
 --- a/clang/test/Driver/clang-g-opts.c
 +++ b/clang/test/Driver/clang-g-opts.c
 @@ -32,7 +32,7 @@
@@ -119,5 +121,5 @@ index 5a33d5eceb61..cedf895b36dc 100644
  ///-----------------------------------------------------------------------------
  /// Checking include-path
 -- 
-2.39.1
+2.41.0
 

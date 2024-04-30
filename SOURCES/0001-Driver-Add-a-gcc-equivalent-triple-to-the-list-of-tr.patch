@@ -1,7 +1,8 @@
-From ccf3e4407e7a5c4c1f2e41c89aad9f86a9c7d81d Mon Sep 17 00:00:00 2001
+From d68a5a7817dc0d43853d8b84c9185dc24338664f Mon Sep 17 00:00:00 2001
 From: Tom Stellard <tstellar@redhat.com>
 Date: Wed, 6 Oct 2021 05:32:44 +0000
-Subject: Driver: Add a gcc equivalent triple to the list of triples to search
+Subject: [PATCH] Driver: Add a gcc equivalent triple to the list of triples to
+ search
 
 There are some gcc triples, like x86_64-redhat-linux, that provide the
 same behavior as a clang triple with a similar name (e.g.
@@ -14,10 +15,10 @@ Differential Revision: https://reviews.llvm.org/D111207
  1 file changed, 22 insertions(+)
 
 diff --git a/clang/lib/Driver/ToolChains/Gnu.cpp b/clang/lib/Driver/ToolChains/Gnu.cpp
-index f203cae1d329..12fa2da3187e 100644
+index fe5bda5c6605..fd4a7f72be14 100644
 --- a/clang/lib/Driver/ToolChains/Gnu.cpp
 +++ b/clang/lib/Driver/ToolChains/Gnu.cpp
-@@ -1969,6 +1969,18 @@ static llvm::StringRef getGCCToolchainDir(const ArgList &Args,
+@@ -1884,6 +1884,18 @@ static llvm::StringRef getGCCToolchainDir(const ArgList &Args,
    return GCC_INSTALL_PREFIX;
  }
  
@@ -36,7 +37,7 @@ index f203cae1d329..12fa2da3187e 100644
  /// Initialize a GCCInstallationDetector from the driver.
  ///
  /// This performs all of the autodetection and sets up the various paths.
-@@ -1989,6 +2001,16 @@ void Generic_GCC::GCCInstallationDetector::init(
+@@ -1904,6 +1916,16 @@ void Generic_GCC::GCCInstallationDetector::init(
    // The compatible GCC triples for this particular architecture.
    SmallVector<StringRef, 16> CandidateTripleAliases;
    SmallVector<StringRef, 16> CandidateBiarchTripleAliases;
@@ -54,5 +55,5 @@ index f203cae1d329..12fa2da3187e 100644
                             CandidateTripleAliases, CandidateBiarchLibDirs,
                             CandidateBiarchTripleAliases);
 -- 
-2.37.1
+2.26.2
 
